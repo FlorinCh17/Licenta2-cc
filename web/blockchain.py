@@ -10,7 +10,7 @@ import socket
 
 # Blockchain Class
 class Blockchain:
-    def __init__(self, host, port):
+    def __init__(self, host='127.0.0.1', port=5001):
         self.chain = []
         self.create_block(proof=1, previous_hash='0')
         self.balances = {}
@@ -188,43 +188,4 @@ class Blockchain:
         private_key = hashlib.sha256(os.urandom(2048)).hexdigest()
         return private_key
 
-    def start_server(self):
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind((self.host, self.port))
-        server.listen(5)
-        print(f"Server started on {self.host}:{self.port}")
-
-        while True:
-            conn, addr = server.accept()
-            threading.Thread(target=self.handle_client, args=(conn, addr)).start()
-
-    def handle_client(self, conn, addr):
-        print(f"Connection from {addr}")
-        buffer = b""
-        while True:
-            data = conn.recv(1024)
-            if not data:
-                break
-            buffer += data
-            if b"\r\n\r\n" in buffer:
-                request = buffer.decode().split("\r\n")[0]
-                print(f"HTTP Request: {request}")
-                buffer = b""
-                if request.startswith("POST /blockchain_message"):
-                    content_length = int([header.split(": ")[1] for header in buffer.decode().split("\r\n") if header.startswith("Content-Length:")][0])
-                    body = buffer[-content_length:]
-                    self.handle_message(body.decode())
-                else:
-                    conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nThis is a blockchain server.")
-                    buffer = b""
-        conn.close()
-
-    def connect_to_peer(self, host, port):
-        peer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        peer.connect((host, port))
-        self.peers.append(peer)
-        print(f"Connected to peer {host}:{port}")
-
-    def broadcast(self, message):
-        for peer in self.peers:
-            peer.send
+   
