@@ -10,6 +10,14 @@ import socket
 
 # Blockchain Class
 class Blockchain:
+    Identity_dict= {}
+    Identity_admin= {}
+    Users= {}
+    Identity_contestants = {}
+    ToBeDetermined = {}
+    Declined_users = {}
+    RejectedRequests = {}
+
     def __init__(self, host='127.0.0.1', port=5001):
         self.chain = []
         self.create_block(proof=1, previous_hash='0')
@@ -41,7 +49,7 @@ class Blockchain:
         except FileNotFoundError:
             print("There are no files")
 
-    def save_data(self, instance, file_name):
+    def save_data(instance, file_name):
         with open(file_name, "w") as file:
             json.dump(instance, file)
 
@@ -73,7 +81,7 @@ class Blockchain:
         self.decrease_balance(sender, amount)
         self.increase_balance(receiver, amount)
         self.chain[-1]['transactions'].append(transaction)
-        self.broadcast_block(self.chain[-1])  # Broadcast the block with the new transaction
+        #self.broadcast_block(self.chain[-1])  # Broadcast the block with the new transaction
         return True
 
     def verify_transaction(self, transaction):
