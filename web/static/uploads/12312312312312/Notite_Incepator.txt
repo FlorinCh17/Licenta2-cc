@@ -1,0 +1,222 @@
+cisCont ProiectFSA:
+User: user.proiectfsa
+Parola: Tehnoglobal2022
+
+Cont Cisco:
+User: mihai.vuza
+Parola: ...
+ + confirmare telefon aplicatie Authentificator
+
+Cont User Tehnoglobal Laptop:
+User: nume.prenume
+Parola: Data de user(Tehnoglobal2023)
+
+Cont Email Tehnoglobal:
+User: nume.prenume@tehnoglobal.ro
+Parola: BunVenit2THG!
+
+Cont Email Electroglobal:
+User: nume.prenume@electroglobalro
+Parola: Same with user pass(Electroglobal2023)
+
+Ab2A5El3ctr0global
+EGB_Intern parola EGB@2021CJ#RK – dedicata calculatoarelor din Electroglobal – are access la server si aplicatiile din retea fara a mai conecta VPN
+THG_Intern parola THG@CJ2021#RK – dedicate calculatoarelor din Tehnoglobal - are access la server si aplicatiile din retea fara a mai conecta VPN
+GuestWireless – parola electroglobal 
+
+EGB.grp.SophosVPN.A - grupul de VPN Electroglobal.
+
+
+Instructiuni reinstalare laptop Tehnoglobal:
+1)salvare date din (D:) si (C:) + (C:)->Users->"userul respectiv"->\appdata->Google/Signatures.
+2)Memorare nume PC si utilizatori din management.
+3)Reinstalare windows cu conectare la THG_Intern.
+4)Change Clock;Add Domain: THGRO.local;File and PrintSharing;Sleep disable;VPN pe user final;adauga user la remote;remote on;
+5)User Administrator + parola: Ab2A5T3hn0global , restul disable.
+6)Instalare:
+-Chrome
+-Ultraviewer
+-Office
+-Email
+-Teams Bussiness
+-7zip
+-Sophos
+-Absmart(Tehnocom)(radu.adam//raluka)
+-ODBC pe user final
+-Cura Ultimaker
+-Solidworks + Licenta de pe server \\THGROlic01
+-Imprimante de pe server \\THGROprt01
+
+Servere:
+bt:sr19-file,srv19-sup(support), srv19-prt
+Tehnoglobal:\\THGROprt01,\\THGROfile01,\\THGROlic01[(licente si tia portal)]
+Electroglobal:\\EGBROfile01,\\printserver,\\electroglobal.ro
+
+http://egbroapp01.electroglobal.ro/ - aplicatia e100 - EGB
+
+Cu Remote Desktop Connection pe "printserver.electroglobal.ro" - > apoi in Print management -> ports - acolo se gasesc ip-urile la toate imprimantele.
+-----------------
+
+Server pontaj biotime compexit: srv19-pontaje(virtual machine)
+
+-------------------
+Update SAGA PS/C:
+1)elboris
+vpn elboris:vpn.elboris.ro
+
+SAGA username:ADMIN
+	pass: 112
+SA FIE APLICATIA inchisa pe toate pc
+
+---------------------------
+Update saga la SMARTCONS
+
+2)office smart-cons
+vpn: vpn.
+SAGA username:ADMIN
+pass:1801
+sagasoft.ro cont:
+Utilizator: bagaceanm699 
+Parola: 17365 1801
+-----------------------
+------------------------
+
+Conectare server Martemi:
+UltraViewer:36 389 927
+Pass:Ab2A5S0fT
+
+Anydesk
+
+1 467 823 178
+cq7z9Xf3swFxNW9h1Rdo
+--------------------
+
+update SAGA C, la HMROOTS:
+user: admin
+pass: 112
+
+Utilizator: fratilai42 
+Parola: 124940 
+
+
+Revisal +:
+
+iulia@handra.ro
+
+Fr@til@i42
+
+--------------------
+gpupdate /force
+HMRootsSRL2021
+\\srv19-file\CompanyShare\IT
+https://www.eset.com/int/business/download/endpoint-antivirus-windows/
+Z:\IT\Kit\vw_trust
+Z:\IT\Privat
+Key_Nod32
+tre sa copiezi de pe server in C:\Windows\System32\Drivers\etc - fisierul hosts din locatia Z:\IT\Kit\Hosts
+din Z:\IT\Kit\Route tre sa adauge acele route in CMD cu RUN AS ADMIN
+
+-------------------
+
+\\srv11-dc\Sharinguri\IT\i-SENSYS MF510 Series\Driver\pcl6
+toyota
+
+-------
+
+Ab21C0mpex1t
+
+
+
+------------------
+UPDATE SAGA LA Smartcons
+
+pentru conectare la serverul de la birou: vpn.aplussoft.ro -> mihai.vuza -> parola de la calculatorul tau (sau de domeniul APS) -> remote pe SRV19-TS.aps.local
+apoi de pe serverul de la birou te conectezi pe 82.79.151.28:63381 cu userul CONTA\mihai.vuza si la SagaC si SagaPS dai RunAs Admin cu useurl CONTA\mihai.vuza.adm
+Utilizator: bagaceanm699 
+Parola: 17365 
+
+SAGA PS:
+utilizator: bagaceanm54
+pass : 12231
+
+
+
+
+--------------------
+
+
+vpn.compexit.ro:4433
+mihai.vuza user
+dupa te coenctezi remote pe h1011115.cpx.local cu it.compexit si parola de la compexit
+
+
+----------------------
+UPDATE DE SAGA LA WIGSTEIN
+
+5.2.198.85 - vpn-ul sau ip-ul public
+10.124.56.251 -> server WIGS (server unde este aplicatia SAGA pentru Wigstein si ASIS pentru Wigstein)
+userul este WIGS\admin parola Ab2A5Wigst3in
+
+
+------------
+MAIL WIGSTEIN
+
+Secure SSL/TLS Settings (Recomandat)
+
+Nume utilizator:	construct@wig.ro
+
+Parolă:	s?qnm#TVqdu:    
+                                        
+Server de intrare:	mail.wig.ro
+
+IMAP Port: 993 POP3 Port: 995
+
+Server de expediere:	mail.wig.ro
+
+SMTP Port: 465
+
+IMAP, POP3 şi SMTP require authentication.
+
+
+--------------------------
+http://webmail.e100.ro
+vpn.handra.ro -> mihai.vuza
+office2016@handra.onmicrosoft.com
+Ab21SoFt@2022!!!@
+
+----------
+El1ade+2A - wifi birou Eliade A plus Soft
+----------
+
+Sunt 2 retele Wireless la Bt Leasing MD:
+
+BTLSecureWifi parola: Ch1$inau2o2! – cu access in LAN BT (aici trebuie conectate calculatoarele) – nu as vrea sa stie utilizatorii parola
+
+BTLGuestWireless parola  "btleasing" -  pentru telefoane si clienti
+
+!!! Va rog orice laptop nou/proaspat configurat sa-l conectati la wireless.
+
+Daca vin solicitari cerem ultraviewer/acces remote si bagam noi parola, nu le-o transmitem. Asa am discutat cu Marius.
+
+
+
+
+-------
+CPX - camere parola: 000000000dey
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
