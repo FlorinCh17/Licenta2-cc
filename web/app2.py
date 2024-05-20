@@ -543,8 +543,8 @@ def viewLedger():
     return render_template('viewLedger.html', block=blockchain.chain, page=page, total_pages=total_pages)
 
 # Creating a Blockchain
-blockchain = Blockchain('localhost', 5000)
-threading.Thread(target=blockchain.start_server).start()
+blockchain = Blockchain('127.0.0.1', 5001)
+
 
 # Mining a new block
 @app.route('/mine_block', methods = ['GET'])
@@ -592,4 +592,4 @@ def get_chain():
     return jsonify(response), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='127.0.0.1', port='5000', debug=True)
