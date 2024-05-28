@@ -1,0 +1,23 @@
+{
+    "cfdb79ed3a": [
+        {
+            "private_key": "aa712a502af9279a8cf56067c8ff8b99c201a1ffe822dea7d9125438504d9184",
+            "name": "test1",
+            "party": "asd",
+            "picture_name": "peakpx.jpg",
+            "picture_path": "c:\\Users\\florin.chivari\\Desktop\\CC\\Licenta2-cc\\static/uploads\\peakpx.jpg",
+            "vot": 0
+        }
+    ],
+    "49ebc72428": [
+        {
+            "private_key": "22f6efc3d5a86dbe59d64ff7c45c6b5ba36f5d534177fdcc75ae1fde069094ea",
+            "public_key": "d2d31c805a",
+            "name": "sdgfsdg",
+            "party": "aisdjuafbasfnbsajlf",
+            "picture_name": "dash.png",
+            "picture_path": "c:\\Users\\florin.chivari\\Desktop\\CC\\Licenta2-cc\\static/uploads\\dash.png",
+            "vot": 0
+        }
+    ]
+}

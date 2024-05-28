@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file, after_this_request
 from flask_sslify import SSLify  # Import SSLify for HTTPS redirection
 from blockchain import Blockchain
 import os
@@ -12,6 +12,12 @@ import secrets
 import smtplib, ssl
 from email.message import EmailMessage
 import threading
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+from os.path import basename
 
 app = Flask(__name__)
 sslify = SSLify(app)  # Enable HTTPS redirection
@@ -28,70 +34,124 @@ class User():
     def __init__(self, user_id, username):
         self.id = user_id
         self.username = username
+        # Creating a Blockchain
+        Blockchain.start_observer()
 
-
-def send_verification_email(private_key):
+def send_verification_email(private_key, reason, filename=None):
     mfa_code = secrets.randbelow(10000)  # Generate a random 4-digit code
     session['mfa_code'] = f'{mfa_code:04}'  # Format the code as a 4-digit string with leading zeros if necessary
-    for private_key, user_info_list in blockchain.Identity_dict.items():
-    # Each value is a list, so assuming there's only one user info dictionary per key
-        if user_info_list:
-            user_info = user_info_list[0]
-            ## sa caut cheia privata in asta si dupa merg direct la email 
-            # Access the email for the user
-            if private_key in user_info:
-                email = user_info['email']
-                print(f"Private Key: {private_key}, Email: {email}")
-            else:
-                print(f"No email found for private key: {private_key}")
-        else:
-            print(f"No user info found for private key: {private_key}")
-
-    print("Retrieved user info:", user_info)
-    if private_key in blockchain.Identity_dict[private_key]:
-        user_info = user_info_list[0]
-        user_data=blockchain.Identity_dict[private_key]['email']
-        print("asdasdasd" + blockchain.Identity_dict[private_key][0]['email'])
-
-
-
-
-    # Access the email field
-    email_receiver = blockchain.Identity_dict[private_key][0]['email']
+    
+    user_info = None
+    email_receiver = None
+    name = None
+    
+    if reason in [1, 2, 3, 6]:
+        for key, user_info_list in blockchain.ToBeDetermined.items():
+            if private_key == key:
+                if user_info_list:
+                    user_info = user_info_list[0]
+                    if 'email' in user_info:
+                        email_receiver = user_info['email']
+                        name = user_info.get('name', 'User')  # Default to 'User' if name is not present
+                else:
+                    print(f"No user info found for private key: {key}")
+    elif reason in [4, 5]:
+        for key, user_info_list in blockchain.Identity_dict.items():
+            if private_key == key:
+                if user_info_list:
+                    user_info = user_info_list[0]
+                    if 'email' in user_info:
+                        email_receiver = user_info['email']
+                        name = user_info.get('name', 'User')  # Default to 'User' if name is not present
+                else:
+                    print(f"No user info found for private key: {key}")
 
     if email_receiver is None:
         flash("Email address not found for the user")
         return redirect(url_for('login'))
-
+    
     email_sender = 'chi.florin17@gmail.com'  # Replace with your email address
+    
+    if reason == 1:
+        subject = 'Account Creation Response'
+        message = "You have problems with the Criminal Record document and with ID document."
+    elif reason == 2:
+        subject = 'Account Creation Response'
+        message = "You have problems with the Criminal Record document."
+    elif reason == 3:
+        subject = 'Account Creation Response'
+        message = "You have problems with the ID document."
+    elif reason == 5:
+        subject = 'Multi-Factor Authentication - Verification Code'
+        body = f"""
+        <html>
+            <body>
+                <h2>Your verification code is:</h2>
+                <p><strong>{mfa_code}</strong></p>
+            </body>
+        </html>
+        """
+    elif reason == 6:
+        subject = 'Welcome to E-Votting'
+        body = f"""
+        <html>
+            <body>
+                <h2>Dear {name},</h2>
+                <p>Thank you for the request to use our platform</p>
+                <p><strong>We will get back to you as soon as possible. </strong></p>
+            </body>
+        </html>
+        """
+    elif reason == 4:
+        subject = 'Credentials to acces our platform'
+        body = f"""
+        <html>
+            <body>
+                <h2>Dear {name},</h2>
+                <p>Thank you for using our platform</p>
+                <p><strong>To access the file please use your name and last 6 characters from CNP</strong></p>
+                <p>Example: johnsmith123456</p>
+            </body>
+        </html>
+        """
+        attachment = open(filename, 'rb') 
+        attachment_package = MIMEBase('application', 'octet-stream')
+        attachment_package.set_payload((attachment).read())
+        encoders.encode_base64(attachment_package)
+        attachment_package.add_header('Content-Disposition', 'attachment', filename=filename)
 
-    subject = 'Multi-Factor Authentication - Verification Code'
-    body = f"""
-    <html>
-        <body>
-            <h2>Your verification code is:</h2>
-            <p><strong>{mfa_code}</strong></p>
-        </body>
-    </html>
-    """
+    if reason in [1, 2, 3]:
+        body = f"""
+        <html>
+            <body>
+                <h2>Dear {name},</h2>
+                <p>We regret to inform you that your account creation request was rejected due to the following reason:</p>
+                <p><strong>{message}</strong></p>
+                <p>Please rectify the issue and try again.</p>
+            </body>
+        </html>
+        """
 
-    em = EmailMessage()
+    em = MIMEMultipart()
     em['From'] = email_sender
     em['To'] = email_receiver
     em['Subject'] = subject
-    em.set_content(body, subtype='html')  # Set HTML content
 
     context = ssl.create_default_context()
 
     try:
+        if reason:
+            em.attach(MIMEText(body, 'html'))  
+            if reason == 4:      
+                em.attach(attachment_package)
         with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
             smtp.login(email_sender, 'obex qkao eirw meqp')  # Replace with your email password
             smtp.sendmail(email_sender, email_receiver, em.as_string())
-        flash("Verification code sent successfully")
+        print("Verification code sent successfully")
     except Exception as e:
-        flash(f"An error occurred while sending the verification email: {e}")
+        print(f"An error occurred while sending the verification email: {e}")
         return redirect(url_for('login'))
-    
+
 
 @app.route('/verify_mfa_email', methods=['GET', 'POST'])
 def verify_mfa_email():
@@ -109,7 +169,6 @@ def verify_mfa_email():
             return render_template('verify_mfa_email.html')
     else:
         return render_template('verify_mfa_email.html')
-
 
 def is_voting_period(start_date, end_date):
     current_time = datetime.now()
@@ -135,7 +194,6 @@ def set_voting_period():
         return render_template("finalResults.html", identity_contestants=blockchain.Identity_contestants, start_date=blockchain.voting_start_date, end_date = blockchain.voting_end_date, case = 1)
     else:
         return redirect(url_for('index'))
-
 
 @app.route('/finalResults', methods = ['POST', 'GET'])
 def finalResults():
@@ -186,7 +244,7 @@ def login():
                 # Password correct, now prompt for MFA
                 session['private_key'] = private_key
                 
-                send_verification_email(private_key)
+                send_verification_email(private_key, 5, 1)
                 return redirect(url_for('verify_mfa_email'))
             else: 
                 flash("Your password is wrong")
@@ -216,28 +274,51 @@ def request_queue():
             criminal_record = request.form.get('criminal_record')
             email = request.form.get('email')
             if PwCR == "Yes" and PwID =="Yes":
-                ## trimit mail ca are problema cu ambele
+                send_verification_email(CNP, 1, 1)
                 pass
             elif PwCR == "Yes":
+                send_verification_email(CNP, 2, 1)
                 rejected_user_data = blockchain.ToBeDetermined.pop(CNP, None)
                 blockchain.RejectedRequests[CNP] = rejected_user_data
+                
 
                 pass
             elif PwID == "Yes":
+                send_verification_email(CNP, 3, 1)
                 rejected_user_data = blockchain.ToBeDetermined.pop(CNP, None)
                 blockchain.RejectedRequests[CNP] = rejected_user_data
-
             else:
                 private_key = Blockchain.generatePrivateKey()
-                #populateIdentity.populate_identity_dict(private_key, name, date_of_birth, CNP, criminal_record, nationality, case4, case3)
-                populateIdentity.populate_identity_dict(private_key, name, date_of_birth, CNP, criminal_record, nationality, residence, alienated)
+                print("this is my private key")
+                print(private_key)
+                populateIdentity.populate_identity_dict(private_key, name, date_of_birth, CNP, criminal_record, nationality, residence, alienated, email)
                 rejected_user_data = blockchain.ToBeDetermined.pop(CNP, None)
-                blockchain.RejectedRequests[CNP] = rejected_user_data
-                return redirect(url_for('admindashboard'))
 
 
-            
+                user_info = None  # Inițializați user_info cu None înainte de a intra în bucla for
 
+                if private_key in blockchain.Identity_dict: 
+                    user_info = blockchain.Identity_dict[private_key]
+
+                    print("user_info in request queue: \t", user_info)
+
+                    if user_info is not None:  # Verificăm dacă user_info a fost definită cu o valoare ne-nula
+                        file = blockchain.Identity_dict[private_key][0]['name']
+                        print("\n\n\n file name: ", file)
+                        filename = f"{secure_filename(file)}_key.txt"
+                        file_path = os.path.join("/home/licentae", filename)
+                        print("file_path: ", file_path)
+                        with open(filename, 'w') as f:
+                            f.write(f"Private Key: {private_key}\n")
+                        if filename is not None:
+                            print("se trimite email-ul de verificare? ")
+                            send_verification_email(private_key, 4, filename)
+                        else:
+                            print("Nu s-a putut inițializa filename cu o valoare corespunzătoare.")
+                    else:
+                        print("Nu s-a găsit informații despre utilizatorul cu cheia privată specificată.")
+                else: print("nu se afiseaza nimic in functie")
+            return redirect(url_for('admindashboard'))
     else:
         return redirect(url_for('login'))
     return render_template('admindashbord.html',  identity_dict = blockchain.ToBeDetermined)
@@ -286,7 +367,6 @@ def findCandidate():
 
     return render_template('candidateManagement.html')
 
-
 @app.route('/submitCandidate', methods=['GET', 'POST'])
 def submitCandidate():
     if "user" in session:
@@ -311,6 +391,7 @@ def submitCandidate():
             blockchain.Identity_contestants[key] = []
             blockchain.Identity_contestants[key].append({
                 'private_key': private_key,
+                'public_key': Blockchain.generateAddress(private_key),
                 'name': name,
                 'party': party,
                 'picture_name': picture_name,
@@ -324,7 +405,6 @@ def submitCandidate():
     else:
         return redirect(url_for('login'))
     return render_template('candidateManagement.html')
-
 
 @app.route('/candidateManagement', methods = ['GET'])
 def candidateManagement():
@@ -391,28 +471,49 @@ def voterManagement():
 
     else:
         return redirect(url_for('login'))
-
-@app.route('/vote', methods = ['GET', 'POST'])
+## voteeeeeeeeeeeeeee
+@app.route('/vote', methods=['GET', 'POST'])
 def vote():
     if "user" in session:
         if is_voting_period(blockchain.voting_start_date, blockchain.voting_end_date):
-            if blockchain.votes_distributed == 1:    
-                user = session["user"]
-                flash(f"{blockchain.Identity_dict[user][0]['name']}", "error")
-                flash(f"{blockchain.Identity_dict[user][0]['vot']}", "error")
-                flash(f"Ai votat cu succes")
-                private_key_candidate = request.form.get('my_variable')
-                blockchain.add_transaction(user, private_key_candidate, 1)
-                return render_template('userPage.html', identity_contestants=blockchain.Identity_contestants, start_vote = blockchain.voting_start_date, end_vote = blockchain.voting_end_date)
-            else:
-                flash(f"{blockchain.Identity_dict[user][0]['name']}", "error")
-                flash(f"{blockchain.Identity_dict[user][0]['vot']}", "error")
-                flash("Votes are not distributed, please contact the institution")
-                return render_template('userPage.html', identity_contestants=blockchain.Identity_contestants, start_vote = blockchain.voting_start_date, end_vote = blockchain.voting_end_date)                
+            if request.method == "POST":
+                if blockchain.votes_distributed == 1:
+                    private_key_user = session["user"]
+
+                    for key in blockchain.Identity_dict.keys(): 
+                        if key == private_key_user:     
+                            user_info = blockchain.Identity_dict[private_key_user]
+                            break
+                    print("\n\n vreau sa vad")
+                    print(blockchain.Identity_dict[private_key_user][0]['name'])
+                    flash(f"{blockchain.Identity_dict[private_key_user][0]['name']}", "error")  
+                    flash(f"{blockchain.Identity_dict[private_key_user][0]['vot']}", "error")  
+
+                    private_key_candidate = request.form.get('my_variable')
+                    print("private key candidate", private_key_candidate)
+                    
+                    success = blockchain.add_transaction(
+                        blockchain.Identity_dict[private_key_user][0]['public_key'], 
+                        private_key_candidate, 
+                        1, 
+                        private_key_user
+                    )
+
+
+
+                    if success:
+                        flash("Ai votat cu succes", "success")
+                    else:
+                        flash("Tranzacția a eșuat. Sold insuficient sau altă eroare.", "error")
+
+                    return render_template('userPage.html', identity_contestants=blockchain.Identity_contestants, start_vote = blockchain.voting_start_date, end_vote = blockchain.voting_end_date)
+                else:
+                    flash("Votes are not distributed, please contact the institution")
+                    return render_template('userPage.html', identity_contestants=blockchain.Identity_contestants, start_vote = blockchain.voting_start_date, end_vote = blockchain.voting_end_date)                
         else:
             return render_template('userPage.html')
     else:
-        return redirect(url_for('login'))    
+        return redirect(url_for('login'))
 
 @app.route('/userPage')
 def userPage():
@@ -428,18 +529,17 @@ def userPage():
         return redirect(url_for('login'))
 
 @app.route('/create_account', methods=['GET', 'POST'])
-def create_accout():
+def create_account():
     if request.method == 'POST':
         private_key = request.form.get('private_key')
         password = request.form.get('password')
         confirmPassword = request.form.get('confirm_password')
+
         # Verifică dacă cheia privată este deja în uz
         if private_key not in blockchain.Identity_dict and private_key not in blockchain.Identity_admin:
-            print(blockchain.Identity_dict)
-            print(blockchain.Identity_admin)
             flash("The Private Key is wrong", "error")
             return render_template('create.html')
-        
+
         # Verifică dacă parola este prea scurtă
         if len(password) < 10:
             flash("Password is too short, please enter at least 10 characters", "error")
@@ -451,17 +551,31 @@ def create_accout():
             return render_template('create.html')
 
         # Dacă nu există erori, creează un cont nou
-        blockchain.Users[private_key] = Blockchain.hash_password(password)  
-        Blockchain.save_data( blockchain.Users, "credentials_block.json")
-        user_data= {}
-        user_data[private_key] = password
-        Blockchain.save_data( user_data, "credentials.json")
+        blockchain.Users[private_key] = Blockchain.hash_password(password)
+        Blockchain.save_data(blockchain.Users, "credentials_block.json")
+
+        # Crează un fișier text cu cheia privată și parola
+        filename = f"{secure_filename(blockchain.Identity_dict[private_key][0]['name'])}_credentials.txt"
+        file_path = os.path.join("/home/licentae", filename)
+        with open(file_path, 'w') as f:
+            f.write(f"Private Key: {private_key}\n")
+            f.write(f"Password: {password}\n")
+
+        send_verification_email(private_key, 4, filename)
+
+        @after_this_request
+        def remove_file(response):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"Error removing file: {e}")
+            return response
+
+        return send_file(file_path, as_attachment=True)
+
+        # Trimite fișierul utilizatorului
 
 
-
-        send_file("credentials.json", as_attachment=True)
-        os.remove('credentials.json')
-        return render_template('login.html')
     return render_template('create.html')
 
 #i need to send a email that the request was suscesfully
@@ -509,8 +623,9 @@ def obtain_private_key():
                 'id_path': id_path,
             })
         print(blockchain.ToBeDetermined)
+        send_verification_email(CNP, 6, 1)
 
-        return render_template('login.html')
+        return redirect(url_for('index'))
     return render_template('register2PrivKey.html')
 
 @app.route("/logout")
@@ -542,12 +657,7 @@ def viewLedger():
     
     return render_template('viewLedger.html', block=blockchain.chain, page=page, total_pages=total_pages)
 
-# Creating a Blockchain
-blockchain = Blockchain('127.0.0.1', 5001)
-
-
-# Mining a new block
-@app.route('/mine_block', methods = ['GET'])
+@app.route('/mine_block', methods=['GET'])
 def mine_block():
     previous_block = blockchain.get_previous_block()
     previous_proof = previous_block['proof']
@@ -570,9 +680,23 @@ def add_transaction():
         return 'Some elements of the transaction are missing', 400
     result = blockchain.add_transaction(json_data['sender'], json_data['receiver'], json_data['amount'], json_data['private_key'])
     if result:
-        response = {'message': 'Transaction added successfully'}
+        blockchain.broadcast_transaction(json_data)
+        response = {'message': 'Transaction added and broadcasted successfully'}
     else:
         response = {'message': 'Insufficient balance or invalid transaction'}
+    return jsonify(response), 201
+
+@app.route('/add_block', methods=['POST'])
+def add_block():
+    json_data = request.get_json()
+    block = json_data
+    previous_block = blockchain.get_previous_block()
+    if previous_block['hash'] == block['previous_hash'] and blockchain.is_chain_valid(blockchain.chain + [block]):
+        blockchain.chain.append(block)
+        blockchain.broadcast_block(block)
+        response = {'message': 'Block added and broadcasted successfully'}
+    else:
+        response = {'message': 'Block rejected'}
     return jsonify(response), 201
 
 @app.route('/connect', methods=['POST'])
@@ -586,10 +710,27 @@ def connect_node():
     response = {'message': f'Connected to node {node_address}'}
     return jsonify(response), 200
 
+@app.route('/replace_chain', methods=['GET'])
+def replace_chain():
+    is_chain_replaced = blockchain.sync_chain()
+    if is_chain_replaced:
+        response = {
+            'message': 'The nodes had different chains so the chain was replaced by the longest one.',
+            'new_chain': blockchain.chain
+        }
+    else:
+        response = {
+            'message': 'All good. The chain is the largest one.',
+            'actual_chain': blockchain.chain
+        }
+    return jsonify(response), 200
+
 @app.route('/chain', methods=['GET'])
 def get_chain():
     response = {'chain': blockchain.chain, 'length': len(blockchain.chain)}
     return jsonify(response), 200
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port='5000', debug=True)
+    blockchain = Blockchain()
+    app.run(host='127.0.0.1', port=5000)
+

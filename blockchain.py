@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+import requests
 import threading
 import base64
 import json
@@ -7,8 +8,21 @@ import datetime
 import os
 from ecdsa import SigningKey, VerifyingKey, SECP256k1
 import socket
+import time
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
-# Blockchain Class
+app = Flask(__name__)
+
+class FileChangeHandler(FileSystemEventHandler):
+    def __init__(self, callback, files_to_watch):
+        self.callback = callback
+        self.files_to_watch = files_to_watch
+
+    def on_modified(self, event):
+        if any(event.src_path.endswith(file) for file in self.files_to_watch):
+            self.callback(event.src_path)
+
 class Blockchain:
     Identity_dict= {}
     Identity_admin= {}
@@ -18,7 +32,7 @@ class Blockchain:
     Declined_users = {}
     RejectedRequests = {}
 
-    def __init__(self, host='127.0.0.1', port=5001):
+    def __init__(self, host='85.9.63.155', port=2083):
         self.chain = []
         self.create_block(proof=1, previous_hash='0')
         self.balances = {}
@@ -29,29 +43,71 @@ class Blockchain:
         self.host = host
         self.port = port
         self.peers = []
+        self.files_to_watch = {
+            "identity_data.json",
+            "identity_admin_data.json",
+            "credentials_block.json",
+            "contestants.json",
+            "distribute_votes.json"
+        }
+        self.start_observer()
 
     def set_voting_period(self, start_date, end_date):
         self.voting_start_date = start_date
         self.voting_end_date = end_date
 
-    def load_data(self, file_name1, file_name2, file_name3, file_name4, file_name5):
-        try:
-            with open(file_name1, "r") as file:
-                self.Identity_dict = json.load(file)
-            with open(file_name2, "r") as file:
-                self.Identity_admin = json.load(file)
-            with open(file_name3, "r") as file:
-                self.Users = json.load(file)
-            with open(file_name4, "r") as file:
-                self.Identity_contestants = json.load(file)
-            with open(file_name5, "r") as file:
-                self.votes_distributed = json.load(file)
-        except FileNotFoundError:
-            print("There are no files")
+    def load_data(self, *file_names):
+        for file_name in file_names:
+            try:
+                with open(file_name, 'r') as file:
+                    data = json.load(file)
+                    if file_name == "identity_data.json":
+                        self.Identity_dict = data
+                    elif file_name == "identity_admin_data.json":
+                        self.Identity_admin = data
+                    elif file_name == "credentials_block.json":
+                        self.Users = data
+                    elif file_name == "contestants.json":
+                        self.Identity_contestants = data
+                    elif file_name == "distribute_votes.json":
+                        self.votes_distributed = data
+            except FileNotFoundError:
+                print(f"{file_name} not found. Creating a default file.")
+                self.save_data({}, file_name)
+            except json.JSONDecodeError:
+                print(f"{file_name} is empty or corrupted. Creating a default file.")
+                self.save_data({}, file_name)
 
     def save_data(instance, file_name):
+        # Citirea datelor existente din fișier (dacă există)
+        try:
+            with open(file_name, "r") as file:
+                date_existente = json.load(file)
+        except FileNotFoundError:
+            date_existente = {}
+
+        # Actualizarea datelor existente cu datele noi
+        date_existente.update(instance)
+
+        # Salvarea tuturor datelor actualizate înapoi în fișier
         with open(file_name, "w") as file:
-            json.dump(instance, file)
+            json.dump(date_existente, file, indent=4)
+
+    def start_observer(self):
+        event_handler = FileChangeHandler(self.reload_data, self.files_to_watch)
+        observer = Observer()
+        observer.schedule(event_handler, path='.', recursive=False)
+        observer.start()
+        self.observer = observer
+        observer_thread = threading.Thread(target=observer.join)
+        observer_thread.start()
+
+    def reload_data(self, file_name):
+        print(file_name)
+        file_name = os.path.basename(file_name)
+        print(f"{file_name} changed, reloading data...")
+        self.load_data(file_name)
+
 
     def create_block(self, proof, previous_hash):
         block = {
@@ -71,17 +127,14 @@ class Blockchain:
         sender_balance = self.get_balance(sender)
         if sender_balance is None or sender_balance < amount:
             return False
-
         transaction = {'sender': sender, 'receiver': receiver, 'amount': amount}
         transaction_json = json.dumps(transaction, sort_keys=True).encode()
         sk = SigningKey.from_string(bytes.fromhex(private_key), curve=SECP256k1)
         signature = sk.sign(transaction_json).hex()
         transaction['signature'] = signature
-
         self.decrease_balance(sender, amount)
         self.increase_balance(receiver, amount)
         self.chain[-1]['transactions'].append(transaction)
-        #self.broadcast_block(self.chain[-1])  # Broadcast the block with the new transaction
         return True
 
     def verify_transaction(self, transaction):
@@ -147,7 +200,6 @@ class Blockchain:
         new_proof = 1
         check_proof = False
         leaf_values = self.get_leaf_values()
-
         while check_proof is False:
             hash_operation = hashlib.sha256(str(new_proof ** 2 - previous_proof ** 2).encode()).hexdigest()
             for leaf_value in leaf_values:
@@ -185,15 +237,60 @@ class Blockchain:
 
     def check_password(password, hashed_password):
         expected_hash = hashlib.sha256(password.encode('utf-8')).digest()
-        print(expected_hash)
         return hashed_password == base64.b64encode(expected_hash).decode('utf-8')
 
     def generateAddress(private_key):
         public_key = hashlib.sha256(private_key.encode()).hexdigest()
-        return public_key
+        return public_key[:10]
 
+    def generate_keys():
+        private_key = SigningKey.generate(curve=SECP256k1)
+        public_key = private_key.get_verifying_key()
+        return private_key, public_key
+    
     def generatePrivateKey():
         private_key = hashlib.sha256(os.urandom(2048)).hexdigest()
         return private_key
 
-   
+    def broadcast_transaction(self, transaction):
+        for peer in self.peers:
+            url = f"http://{peer}/add_transaction"
+            try:
+                requests.post(url, json=transaction)
+            except requests.exceptions.RequestException as e:
+                print(f"Error broadcasting transaction to {peer}: {e}")
+
+    def broadcast_block(self, block):
+        for peer in self.peers:
+            url = f"http://{peer}/add_block"
+            try:
+                requests.post(url, json=block)
+            except requests.exceptions.RequestException as e:
+                print(f"Error broadcasting block to {peer}: {e}")
+
+    def sync_chain(self):
+        longest_chain = None
+        max_length = len(self.chain)
+        for peer in self.peers:
+            url = f"http://{peer}/chain"
+            try:
+                response = requests.get(url)
+                length = response.json()['length']
+                chain = response.json()['chain']
+                if length > max_length and self.is_chain_valid(chain):
+                    max_length = length
+                    longest_chain = chain
+            except requests.exceptions.RequestException as e:
+                print(f"Error syncing chain with {peer}: {e}")
+        if longest_chain:
+            self.chain = longest_chain
+            return True
+        return False
+
+    def add_node(self, address):
+        self.peers.append(address)
+
+    def connect_to_peer(self, host, port):
+        self.peers.append(f"{host}:{port}")
+
+
